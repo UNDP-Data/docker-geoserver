@@ -56,6 +56,15 @@ export GEOSERVER_OPTS="-Djava.awt.headless=true -server -Xms${INITIAL_MEMORY} -X
 ## Prepare the JVM command line arguments
 export JAVA_OPTS="${JAVA_OPTS} ${GEOSERVER_OPTS}"
 
+## mount Azure Blob
+if [ ! -z "${AZURE_STORAGE_ACCOUNT}" ]; then
+    blobfuse ${AZURE_MOUNT_POINT} \
+      --use-https=true \
+      --tmp-path=${AZURE_MOUNT_CACHE_POINT} \
+      --container-name=${AZURE_STORAGE_ACCOUNT_CONTAINER} \
+      -o allow_other
+fi
+
 if [[ -f ${GEOSERVER_HOME}/start.jar ]]; then
   exec java "$JAVA_OPTS"  -jar start.jar
 else
