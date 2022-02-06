@@ -1,7 +1,7 @@
 #--------- Generic stuff all our Dockerfiles should start with so we get caching ------------
 ARG IMAGE_VERSION=9.0-jdk11-openjdk-slim-buster
 ARG JAVA_HOME=/usr/local/openjdk-11
-FROM tomcat:$IMAGE_VERSION
+FROM --platform=linux/amd64 tomcat:$IMAGE_VERSION
 
 LABEL maintainer="Tim Sutton<tim@linfiniti.com>"
 ARG GS_VERSION=2.20.2
@@ -14,11 +14,14 @@ ARG GEOSERVER_GID=10001
 ARG USER=geoserveruser
 ARG GROUP_NAME=geoserverusers
 ARG HTTPS_PORT=8443
+ARG AZURE_MOUNT_POINT=/geoserver/azureblob
+ARG AZURE_MOUNT_CACHE_POINT=/geoserver/azureblobtmp
 
 #Install extra fonts to use with sld font markers
 RUN apt-get -y update; apt-get -y --no-install-recommends install fonts-cantarell lmodern ttf-aenigma \
     ttf-georgewilliams ttf-bitstream-vera ttf-sjfonts tv-fonts  libapr1-dev libssl-dev  \
-    gdal-bin libgdal-java wget zip unzip curl xsltproc certbot  cabextract gettext postgresql-client figlet
+    gdal-bin libgdal-java wget zip unzip curl xsltproc certbot  cabextract gettext postgresql-client figlet \
+    gpg gpg-agent sudo
 
 RUN set -e \
     export DEBIAN_FRONTEND=noninteractive \
@@ -62,6 +65,15 @@ RUN chmod +x /scripts/*.sh;/scripts/setup.sh \
     /tmp/ /home/${USER}/ /community_plugins/ /plugins ${GEOSERVER_HOME} ${EXTRA_CONFIG_DIR} \
     /usr/share/fonts/ /geo_data;chmod o+rw ${CERT_DIR}
 
+#Install Blobfuse for mounting Azure Blob
+RUN wget https://packages.microsoft.com/config/debian/10/packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && apt-get -y update \
+    && apt-get -y install blobfuse fuse
+RUN mkdir -p "${AZURE_MOUNT_POINT}" \
+    && chown ${USER} "${AZURE_MOUNT_POINT}" \
+    && mkdir -p "${AZURE_MOUNT_CACHE_POINT}" \
+    && chown ${USER} "${AZURE_MOUNT_CACHE_POINT}"
 
 EXPOSE  $HTTPS_PORT
 
